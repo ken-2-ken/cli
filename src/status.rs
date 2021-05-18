@@ -1,7 +1,7 @@
 pub enum Status {
     File,
     Message,
-    Unknown
+    Unknown,
 }
 
 impl Into<Status> for u8 {
@@ -9,7 +9,7 @@ impl Into<Status> for u8 {
         match self {
             0 => Status::File,
             1 => Status::Message,
-            _ => Status::Unknown
+            _ => Status::Unknown,
         }
     }
 }

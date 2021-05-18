@@ -1,7 +1,7 @@
 [package]
 name = 'ken2ken'
 version = '1.0.0'
-authors = ['ProfSucrose <dr.blobbles@gmail.com>']
+authors = ['ken-2-ken']
 edition = '2018'
 
 [dependencies]

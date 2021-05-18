@@ -1,8 +1,12 @@
-use std::{fs::File, io::{self, Write}, net::TcpStream};
 use super::status::Status;
+use std::{
+    fs::File,
+    io::{self, Write},
+    net::TcpStream,
+};
 
 pub struct Client {
-    stream: TcpStream
+    stream: TcpStream,
 }
 
 impl Client {

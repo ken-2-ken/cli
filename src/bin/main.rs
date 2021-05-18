@@ -1,17 +1,17 @@
 use ken2ken::{
     client::Client,
-    socket::{Socket, ORIGIN},
+    listener::{Listener, ORIGIN},
 };
 use std::io::{self, Write};
 use std::net::TcpStream;
 use std::thread;
 
 fn main() -> std::io::Result<()> {
-    let socket = Socket::new();
-    println!("Hosting ken2ken on {}:{}", ORIGIN, socket.port);
+    let listener = Listener::new();
+    println!("Hosting ken2ken on {}:{}", ORIGIN, listener.port);
 
     thread::spawn(move || {
-        socket.listen();
+        listener.listen();
     });
 
     let stdin = io::stdin();

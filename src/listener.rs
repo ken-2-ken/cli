@@ -1,32 +1,32 @@
 use super::status::Status;
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader, Error, ErrorKind, Read, Write},
+    io::{self, BufRead, BufReader, Error, ErrorKind, Read},
     net::{TcpListener, TcpStream},
 };
 
 pub const ORIGIN: &str = "0.0.0.0";
 const PORT: u16 = 8000;
 
-pub struct Socket {
+pub struct Listener {
     pub port: u16,
-    listener: TcpListener,
+    socket: TcpListener,
 }
 
-impl Socket {
+impl Listener {
     pub fn new() -> Self {
         Self::at(PORT)
     }
 
-    fn at(port: u16) -> Socket {
+    fn at(port: u16) -> Listener {
         match TcpListener::bind(format!("{}:{}", ORIGIN, port)) {
-            Ok(listener) => Self { port, listener },
+            Ok(socket) => Self { port, socket },
             Err(_) => Self::at(port + 1),
         }
     }
 
     pub fn listen(&self) {
-        for stream in self.listener.incoming() {
+        for stream in self.socket.incoming() {
             println!("Received connection");
 
             match Self::on_incoming(stream) {
@@ -50,8 +50,9 @@ impl Socket {
                 let mut path = String::new();
                 reader.read_line(&mut path)?;
 
-                let path = format!("~/Downloads/{}", path.trim()).as_str();
-                File::create(path)?.write(reader.buffer())?;
+                let path = format!("~/Downloads/{}", path.trim());
+                let mut file = File::create(path.as_str())?;
+                io::copy(&mut reader, &mut file)?;
 
                 return Ok(format!("Downloaded file into {}", path));
             }

@@ -1,9 +1,9 @@
+use aes::{Aes128, BlockDecrypt, NewBlockCipher, cipher::generic_array::GenericArray};
+use rand_core::OsRng;
+use x25519_dalek::{EphemeralSecret, PublicKey};
+
 use super::status::Status;
-use std::{
-    fs::File,
-    io::{self, BufRead, BufReader, Error, ErrorKind, Read},
-    net::{TcpListener, TcpStream},
-};
+use std::{convert::TryInto, fs::File, io::{self, Error, ErrorKind, Read, Write}, net::{TcpListener, TcpStream}};
 
 pub const ORIGIN: &str = "0.0.0.0";
 const PORT: u16 = 8000;
@@ -37,29 +37,55 @@ impl Listener {
     fn on_incoming(stream: Result<TcpStream, Error>) -> io::Result<String> {
         let mut stream = stream?;
         let address = stream.peer_addr()?;
+        
+        let secret = EphemeralSecret::new(OsRng);
+        let public = PublicKey::from(&secret);
+        stream.write(public.as_bytes())?;
 
-        let mut status = [0];
-        stream.read(&mut status)?;
+        let mut other_public = [0u8; 32];
+        stream.read(&mut other_public)?;
 
-        let mut reader = BufReader::new(stream);
+        let other_public = PublicKey::from(other_public);
+        let shared_secret = secret.diffie_hellman(&other_public);
+        
+        let key = GenericArray::from_slice(&shared_secret.as_bytes()[0..16]);
+        let cipher = Aes128::new(&key);
 
-        match status[0].into() {
+        let mut buffer = Vec::new();
+        stream.read_to_end(&mut buffer)?;
+
+        for block in buffer.chunks_mut(16) {
+            cipher.decrypt_block(GenericArray::from_mut_slice(block));
+        }
+
+        let len = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
+
+        let buffer = &buffer[16..16 + len as usize];
+
+        let status = buffer[0].into();
+
+        let buffer = &buffer[1..];
+
+        match status {
             Status::File => {
-                let mut path = String::new();
-                reader.read_line(&mut path)?;
+                let (path, data) = buffer.split_at(buffer.iter().position(|&b| b == '\n' as u8).unwrap());
+
+                // remove delimiter from right side of split
+                let data = &data[1..];
+
+                let path = std::str::from_utf8(path).unwrap();
 
                 let path = format!("{}/Downloads/{}", std::env::var("HOME").unwrap(), path.trim());
                 let mut file = File::create(path.as_str())?;
 
-                io::copy(&mut reader, &mut file)?;
+                file.write(data)?;
 
-                return Ok(format!("Downloaded file from {} into {}", address, path));
+                Ok(format!("Downloaded file from {} into {}", address, path))
             }
             Status::Message => {
-                let mut message = String::new();
-                reader.read_line(&mut message)?;
+                let message = std::str::from_utf8(&buffer).unwrap();
 
-                Ok(format!("Received message from {}: {}", address, message.trim()))
+                Ok(format!("Received message from {}: {}", address, message))
             }
             Status::Unknown => Err(Error::new(ErrorKind::Other, "Invalid message status")),
         }

@@ -5,3 +5,9 @@ authors = ['ken-2-ken']
 edition = '2018'
 
 [dependencies]
+x25519-dalek = "1.1.1"
+
+# use older version for compatibility with above
+rand_core = { version = "0.5", default-features = false }
+
+aes = "0.7.2"

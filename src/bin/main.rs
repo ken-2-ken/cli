@@ -27,7 +27,13 @@ fn main() -> std::io::Result<()> {
             }
         };
 
-        let client = Client::from(stream);
+        let mut client = match Client::connect(stream) {
+            Ok(client) => client,
+            Err(err) => {
+                println!("Error in making handshake: {}", err);
+                continue;
+            }
+        };
 
         let mut message = String::new();
         print!("Message: ");
